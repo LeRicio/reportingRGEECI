@@ -40,7 +40,7 @@ def get_data_from_forms(url):
     df = pd.read_csv(url,sep=';', dtype={"NumZD":"object"})
     df["Chef d'equipe"] = df["nom_CE"].map(liste_equipe)
     df["Superviseur"] = df["nom_CE"].map(liste_sup)
-    df = df.rename(columns={"UEF_total":"UE formelle","UEI_total":"UE informelle","NbZD":"Nombre ZD","refus_total":"refus"})
+    df = df.rename(columns={"UEF_total":"UE formelle","UEI_total":"UE informelle","NbZD":"Nombre ZD","refus_total":"refus","partiel_total":"partiel" })
     return df
 
 @st.cache_resource

@@ -51,7 +51,6 @@ with st.sidebar:
     SP = df["NomSp"].sort_values().unique()
     SP_SELECT = st.selectbox("SOUS-PREFECTURE:", SP, index=None)
 
-
 # Filtrage des données selon les sélections
 if len(df) != 0:
     try:
@@ -91,20 +90,22 @@ UET = df["UE_total"].sum()
 REFUS = df["refus"].sum()
 UEI = df["UE informelle"].sum()
 UEF = df["UE formelle"].sum()
+PARTIEL = df["partiel"].sum()
 ZD_total = len(liste_zd)
 
 # Affichage des métriques dans des colonnes
 container = st.container()
 with container:
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3 , col4 = st.columns(4)
     col1.metric("UE", f"{UET:,}")
     col2.metric("UE formelle", f"{UEF:,}")
     col3.metric("UE informelle", f"{UEI:,}")
+    col4.metric("Partiel", f"{PARTIEL:,}")
 with container:
-    col4, col5, col6 = st.columns([2, 3, 2])
-    col4.metric("ZDs traités", f"{ZD_total:,}")
-    col5.metric("Taux de réalisation ZD", f"{(ZD_total / 569) * 100:.2f}%")
-    col6.metric("Refus", f"{REFUS:,}")
+    col5, col6, col7 = st.columns([2, 3, 2])
+    col5.metric("ZDs traités", f"{ZD_total:,}")
+    col6.metric("Taux de réalisation ZD", f"{(ZD_total / 569) * 100:.2f}%")
+    col7.metric("Refus", f"{REFUS:,}")
 
 # Affichage des tableaux de suivi
 st.markdown("<h5 style='text-align: center;color: #3a416c;'>TABLEAU DE SUIVI PAR EQUIPE</h5>", unsafe_allow_html=True)
@@ -122,14 +123,33 @@ pivot_df = pd.concat([pivot_df, sum_row_df])
 st.table(function.style_dataframe(pivot_df))
 
 st.markdown("<h5 style='text-align: center;color: #3a416c;'>COURBE D'EVOLUTION DES EQUIPES</h5>", unsafe_allow_html=True)
+
+# Regroupement des données par date
+df_grouped = df.groupby(['date_reporting', 'Chef d\'equipe']).sum().reset_index()
+
+
 # Création de la courbe d'évolution
-fig = px.line(df, x='date_reporting', y='UE_total', color="Chef d'equipe", title='Évolution des UE par équipe')
+fig = px.line(
+    df_grouped, 
+    x='date_reporting', 
+    y='UE_total', 
+    color="Chef d'equipe", 
+    labels={"date_reporting": "Date de Reporting", "UE_total": "UE Total"},
+    markers=True
+)
+
+# Ajout de mise en forme
+fig.update_layout(
+    xaxis_title='Date de Reporting',
+    yaxis_title='UE Total',
+    legend_title_text='Chef d\'équipe'
+)
 
 # Affichage de la courbe d'évolution
 st.plotly_chart(fig)
 
 st.markdown("<h5 style='text-align: center;color: #3a416c;'>TABLEAU DE SUIVI PAR DEPARTEMENT</h5>", unsafe_allow_html=True)
-df_depart = df.groupby("NomDep")[["UE formelle", "UE informelle", "UE_total", "refus", "Nombre ZD"]].sum()
+df_depart = df.groupby("NomDep")[["UE formelle", "UE informelle", "UE_total", "refus", "Nombre ZD"]].sum().reset_index()
 
 sum_row = df_depart.sum(axis=0)
 sum_row_df = pd.DataFrame(sum_row).T
@@ -138,12 +158,28 @@ df_depart = pd.concat([df_depart, sum_row_df])
 st.table(function.style_dataframe(df_depart))
 
 st.markdown("<h5 style='text-align: center;color: #3a416c;'>TABLEAU DE SUIVI PAR SUPERVISEUR</h5>", unsafe_allow_html=True)
-df_sup = df.groupby("Superviseur")[["UE formelle", "UE informelle", "UE_total", "refus", "Nombre ZD"]].sum()
+df_sup = df.groupby("Superviseur")[["UE formelle", "UE informelle", "UE_total", "refus", "Nombre ZD"]].sum().reset_index()
 st.table(function.style_dataframe(df_sup))
 
 st.markdown("<h5 style='text-align: center;color: #3a416c;'>TABLEAU DE SUIVI PAR CHEF D'EQUIPE</h5>", unsafe_allow_html=True)
-df_sup = df.groupby("Chef d'equipe")[["UE formelle", "UE informelle", "UE_total", "refus", "Nombre ZD"]].sum()
-st.table(function.style_dataframe(df_sup))
+df_chef = df.groupby("Chef d'equipe")[["UE formelle", "UE informelle", "UE_total", "refus", "Nombre ZD"]].sum().reset_index()
+st.table(function.style_dataframe(df_chef))
+
+# Ajout d'un diagramme en barres pour visualiser les refus par département
+st.markdown("<h5 style='text-align: center;color: #3a416c;'>DIAGRAMME DES REFUS PAR DEPARTEMENT</h5>", unsafe_allow_html=True)
+fig_refus_dep = px.bar(df_depart, x='NomDep', y='refus', title='Refus par Département')
+st.plotly_chart(fig_refus_dep)
+
+# Ajout d'un camembert pour visualiser la répartition des UE par type
+st.markdown("<h5 style='text-align: center;color: #3a416c;'>REPARTITION DES UE PAR TYPE</h5>", unsafe_allow_html=True)
+fig_pie = px.pie(values=[UEF, UEI], names=['UE formelle', 'UE informelle'], title='Répartition des UE par type')
+st.plotly_chart(fig_pie)
+
+# Ajout d'une heatmap pour visualiser les corrélations entre différentes colonnes
+st.markdown("<h5 style='text-align: center;color: #3a416c;'>HEATMAP DES CORRELATIONS</h5>", unsafe_allow_html=True)
+corr = df[["UE formelle", "UE informelle", "UE_total", "refus", "Nombre ZD"]].corr()
+fig_heatmap = px.imshow(corr, text_auto=True, title='Heatmap des Corrélations')
+st.plotly_chart(fig_heatmap)
 
 # Footer avec lien vers LinkedIn
 footer = """
