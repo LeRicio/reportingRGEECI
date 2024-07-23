@@ -2,7 +2,9 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import function
+from datetime import datetime, timedelta
 
 # Configuration de la page Streamlit
 st.set_page_config(
@@ -64,8 +66,8 @@ if len(df) != 0:
             df = df[df["NomDep"] == DEP_SELECT]
         if SP_SELECT:
             df = df[df["NomSp"] == SP_SELECT]
-    except:
-        pass
+    except Exception as e:
+        st.error(f"Erreur lors du filtrage des données: {e}")
 
 # Fonction pour scinder et collecter les données de la colonne spécifiée
 def split_and_collect(column):
@@ -82,7 +84,7 @@ liste_zd = split_and_collect(df['NumZD'])
 liste_zd = list(set(liste_zd))
 try:
     liste_zd.remove("0000")
-except:
+except ValueError:
     pass
 
 # Calcul des métriques
@@ -90,13 +92,13 @@ UET = df["UE_total"].sum()
 REFUS = df["refus"].sum()
 UEI = df["UE informelle"].sum()
 UEF = df["UE formelle"].sum()
-PARTIEL = df["partiel"].sum()
+PARTIEL = df.loc[df["date_reporting"]==str(datetime.now().date()),"partiel"].sum()
 ZD_total = len(liste_zd)
 
 # Affichage des métriques dans des colonnes
 container = st.container()
 with container:
-    col1, col2, col3 , col4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns(4)
     col1.metric("UE", f"{UET:,}")
     col2.metric("UE formelle", f"{UEF:,}")
     col3.metric("UE informelle", f"{UEI:,}")
@@ -119,14 +121,14 @@ sum_row = pivot_df.sum(axis=0)
 sum_row_df = pd.DataFrame(sum_row).T
 sum_row_df.index = ['Total']
 pivot_df = pd.concat([pivot_df, sum_row_df])
-
+pivot_df = pivot_df.reset_index(drop=False)
+pivot_df.index = pivot_df.index + 1
 st.table(function.style_dataframe(pivot_df))
 
 st.markdown("<h5 style='text-align: center;color: #3a416c;'>COURBE D'EVOLUTION DES EQUIPES</h5>", unsafe_allow_html=True)
 
 # Regroupement des données par date
 df_grouped = df.groupby(['date_reporting', 'Chef d\'equipe']).sum().reset_index()
-
 
 # Création de la courbe d'évolution
 fig = px.line(
@@ -165,21 +167,103 @@ st.markdown("<h5 style='text-align: center;color: #3a416c;'>TABLEAU DE SUIVI PAR
 df_chef = df.groupby("Chef d'equipe")[["UE formelle", "UE informelle", "UE_total", "refus", "Nombre ZD"]].sum().reset_index()
 st.table(function.style_dataframe(df_chef))
 
-# Ajout d'un diagramme en barres pour visualiser les refus par département
-st.markdown("<h5 style='text-align: center;color: #3a416c;'>DIAGRAMME DES REFUS PAR DEPARTEMENT</h5>", unsafe_allow_html=True)
-fig_refus_dep = px.bar(df_depart, x='NomDep', y='refus', title='Refus par Département')
-st.plotly_chart(fig_refus_dep)
+col1, col2 = st.columns(2)
 
-# Ajout d'un camembert pour visualiser la répartition des UE par type
-st.markdown("<h5 style='text-align: center;color: #3a416c;'>REPARTITION DES UE PAR TYPE</h5>", unsafe_allow_html=True)
-fig_pie = px.pie(values=[UEF, UEI], names=['UE formelle', 'UE informelle'], title='Répartition des UE par type')
-st.plotly_chart(fig_pie)
+#classement des AGENTS
+with col1:
+    st.markdown("<h5 style='text-align: center;color: #3a416c;'>CLASSEMENT AGENTS RECENSEURS</h5>", unsafe_allow_html=True)
+    stat_agent = df[["nom_CE","UE_agent1","UE_agent2","UE_agent3"]]
+    stat_agent =stat_agent.groupby("nom_CE").sum()
+    stat_agent = stat_agent.reset_index()
+    stat_agent = stat_agent.melt(id_vars=['nom_CE'], var_name='Agent', value_name='UE_Total')
+    stat_agent['Nom_Agent'] = stat_agent['nom_CE'] + stat_agent['Agent'].str[-1]
+    stat_agent = stat_agent[["Nom_Agent","UE_Total"]]
+    stat_agent.sort_values(by="UE_Total",ascending=False,inplace=True)
+    stat_agent = function.add_agent_name(stat_agent)
+    stat_agent = stat_agent.reset_index(drop=True)
+    stat_agent.index = stat_agent.index + 1
+    st.table(function.style_dataframe(stat_agent))
 
-# Ajout d'une heatmap pour visualiser les corrélations entre différentes colonnes
-st.markdown("<h5 style='text-align: center;color: #3a416c;'>HEATMAP DES CORRELATIONS</h5>", unsafe_allow_html=True)
-corr = df[["UE formelle", "UE informelle", "UE_total", "refus", "Nombre ZD"]].corr()
-fig_heatmap = px.imshow(corr, text_auto=True, title='Heatmap des Corrélations')
-st.plotly_chart(fig_heatmap)
+
+# Créer le diagramme en barres
+with col2:
+    st.markdown("<h5 style='text-align: center;color: #3a416c;'>REPRESENTATION DES AGENTS PAR UE</h5>", unsafe_allow_html=True)
+    fig_ag = px.bar(stat_agent, x='Nom_Agent', y='UE_Total', text='UE_Total', 
+             labels={'Nom_Agent': 'Nom de l\'Agent', 'UE_Total': 'Total UE'})
+    st.plotly_chart(fig_ag)
+
+
+
+#--------------------------------------------------------------------------------------
+
+# Regroupement des données des agents par date
+st.markdown("<h5 style='text-align: center;color: #3a416c;'>COURBE D'EVOLUTION DES AGENTS</h5>", unsafe_allow_html=True)
+
+stat_agent = df[["date_reporting", "nom_CE", "UE_agent1", "UE_agent2", "UE_agent3"]]
+stat_agent = stat_agent.groupby(['date_reporting', 'nom_CE']).sum().reset_index()
+stat_agent = stat_agent.melt(id_vars=['date_reporting', 'nom_CE'], var_name='Agent', value_name='UE_Total')
+stat_agent['Nom_Agent'] = stat_agent['nom_CE'] + stat_agent['Agent'].str[-1]
+stat_agent = stat_agent[["date_reporting", "Nom_Agent", "UE_Total"]]
+stat_agent = function.add_agent_name(stat_agent)
+
+# Création de la courbe d'évolution
+fig_agt1 = px.line(
+    stat_agent, 
+    x='date_reporting', 
+    y='UE_Total', 
+    color="Nom_Agent", 
+    labels={"date_reporting": "Date de Reporting", "UE_Total": "UE Total"},
+    markers=True
+)
+
+# Ajout de mise en forme
+fig_agt1.update_layout(
+    xaxis_title='Date de Reporting',
+    yaxis_title='UE Total',
+    legend_title_text='Agent Enquêteur'
+)
+
+# Affichage de la courbe d'évolution
+st.plotly_chart(fig_agt1)
+
+#-------------------------------------------------------------------------------------
+
+# Affichage des graphiques côte à côte
+col1, col2 = st.columns(2)
+
+# Diagrame empilé des type d'UE par équipe
+segment_df = df.melt(id_vars="Chef d'equipe", value_vars=["UE informelle", "UE formelle", "refus"],
+                             var_name='Segment', value_name='Value')
+fig_segment = px.bar(segment_df, x="Chef d'equipe", y='Value', color='Segment', barmode='stack')
+fig_segment=function.improve_layout(fig_segment)
+
+with col1:
+    st.markdown("<h5 style='text-align: center;color: #3a416c;'>TYPE D'UE PAR EQUIPE</h5>", unsafe_allow_html=True)
+    st.plotly_chart(fig_segment, use_container_width=True)
+
+# Diagramme en barres pour visualiser le nombre d'UE par équipe
+
+with col2:
+    st.markdown("<h5 style='text-align: center;color: #3a416c;'>DIAGRAMME DU NOMBRE D'UE PAR EQUIPE</h5>", unsafe_allow_html=True)
+    fig_refus_dep = px.bar(df, x="Chef d'equipe", y='UE_total')
+    fig_refus_dep=function.improve_layout(fig_refus_dep)
+    st.plotly_chart(fig_refus_dep, use_container_width=True)
+
+
+col1, col2 = st.columns(2)
+# Camembert pour visualiser la répartition des UE par type
+
+with col1:
+    st.markdown("<h5 style='text-align: center;color: #3a416c;'>REPARTITION DES UE PAR TYPE</h5>", unsafe_allow_html=True)
+    fig_pie = px.pie(values=[UEF, UEI], names=['UE formelle', 'UE informelle'])
+    st.plotly_chart(function.improve_layout(fig_pie))
+
+
+with col2:
+    st.markdown("<h5 style='text-align: center;color: #3a416c;'>REPARTITION DES UE PAR TYPE</h5>", unsafe_allow_html=True)
+    fig_category = go.Figure(data=[go.Pie(labels=['UE formelle', 'UE informelle'], values=[UEF, UEI], hole=.4)])
+    fig_category=function.improve_layout(fig_category)
+    st.plotly_chart(fig_category, use_container_width=True)
 
 # Footer avec lien vers LinkedIn
 footer = """

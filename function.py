@@ -1,6 +1,8 @@
 import pandas as pd
 import streamlit as st
 from datetime import datetime
+import plotly.express as px
+import plotly.graph_objects as go
 
 liste_equipe = {
 "RGEECI_Ce0131" : "KOFFI BALEY YVES VINCENT",
@@ -8,7 +10,7 @@ liste_equipe = {
 "RGEECI_Ce0133" : "GONGBE KOUADIO AUBAIN",
 "RGEECI_Ce0134" : "YEO ZIE SAMUEL",
 "RGEECI_Ce0135" : "DANGBE YOLÉ SYLVIE CARINE",
-"RGEECI_Ce0136" : "BAGATE KARIM "
+"RGEECI_Ce0136" : "BAGATE KARIM"
 
 }
 
@@ -22,6 +24,33 @@ liste_sup = {
 
 }
 
+
+liste_ar = {
+"RGEECI_Ce01311" : "COULIBALY MABOUNOU",
+"RGEECI_Ce01312" : "DIAKITE MOHAMED",
+"RGEECI_Ce01313" : "COULIBALY SOUNGALO TAYOMON",
+"RGEECI_Ce01321" : "KONATE ABBASS",
+"RGEECI_Ce01322" : "TANOH JOSUA ALEX", 
+"RGEECI_Ce01323" : "TINDE TOUSSAINT HABIB",
+"RGEECI_Ce01331" : "SOUMAHORO AHMED",
+"RGEECI_Ce01332" : "KONE N'ZLAMPIEU VIANNEY AYEB",
+"RGEECI_Ce01333" : "DOUMBIA SEKOU",
+"RGEECI_Ce01341" : "DOSSO LAMA",
+"RGEECI_Ce01342" : "HIEN HOHO DELPHINE",
+"RGEECI_Ce01343" : "DOSSO MAFE",
+"RGEECI_Ce01351" : "DOUMBIA SALIF",
+"RGEECI_Ce01352" : "KOUAME TODO FERDINAND",
+"RGEECI_Ce01353" : "SANOGO ZIE MOUSSA",
+"RGEECI_Ce01361" : "YAO AMENAN ANGE AMANDINE",
+"RGEECI_Ce01362" : "KAMAGATE BAMORY",
+"RGEECI_Ce01363" : "KONE FOHOBEH ALASSANE"
+
+}
+
+
+def add_agent_name(df):
+    df['Nom_Agent'] = df['Nom_Agent'].map(liste_ar)
+    return df
 
 def cooling_highlight(val):
     color = '#aaf6aa' if val else 'white'
@@ -77,3 +106,28 @@ def style_dataframe(df):
     styled_df.apply(row_style, axis=1)
 
     return styled_df
+
+
+# Améliorer l'apparence
+def improve_layout(fig):
+    """
+    Améliore l'apparence d'un graphique Plotly en appliquant des styles personnalisés.
+
+    Args:
+    fig (plotly.graph_objects.Figure): Le graphique Plotly à personnaliser.
+
+    Returns:
+    plotly.graph_objects.Figure: Le graphique personnalisé.
+    """
+    fig.update_layout(
+        legend_title_font=dict(size=18),
+        legend_font=dict(size=15),
+        xaxis_title_font=dict(size=20),
+        yaxis_title_font=dict(size=20),
+        plot_bgcolor='whitesmoke',
+        paper_bgcolor='whitesmoke',
+        xaxis=dict(showgrid=False, zeroline=False),
+        yaxis=dict(showgrid=True, zeroline=True, zerolinecolor='gray', zerolinewidth=2),
+        font=dict(family="Arial", size=14, color='darkblue')
+    )
+    return fig
