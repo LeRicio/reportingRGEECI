@@ -150,8 +150,13 @@ fig.update_layout(
 # Affichage de la courbe d'évolution
 st.plotly_chart(fig)
 
+# TABLEAU DE SUIVI PAR DEPARTEMENT
 st.markdown("<h5 style='text-align: center;color: #3a416c;'>TABLEAU DE SUIVI PAR DEPARTEMENT</h5>", unsafe_allow_html=True)
-df_depart = df.groupby("NomDep")[["UE formelle", "UE informelle", "UE_total", "refus", "Nombre ZD"]].sum().reset_index()
+# Créer une colonne avec la longueur de 'liste_zd'
+df['Nb_zd'] = df['liste_zd'].apply(len)
+
+# Groupement des données par département et agrégation des colonnes spécifiques
+df_depart = df.groupby("NomDep")[["UE formelle", "UE informelle", "UE_total", "refus", "Nb_zd"]].sum().reset_index()
 
 sum_row = df_depart.sum(axis=0)
 sum_row_df = pd.DataFrame(sum_row).T
