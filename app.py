@@ -80,7 +80,7 @@ def split_and_collect(column):
     return result
 
 # Appliquer la fonction à la colonne 'NumZD'
-liste_zd = split_and_collect(df['NumZD'])
+liste_zd = split_and_collect(df[['NumZD','NomSp']])
 liste_zd = list(set(liste_zd))
 try:
     liste_zd.remove("0000")
