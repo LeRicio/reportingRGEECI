@@ -106,7 +106,7 @@ with container:
 with container:
     col5, col6, col7 = st.columns([2, 3, 2])
     col5.metric("ZDs traités", f"{ZD_total:,}")
-    col6.metric("Taux de réalisation ZD", f"{(ZD_total / 569) * 100:.2f}%")
+    col6.metric("Taux de réalisation ZD", f"{(ZD_total / 269) * 100:.2f}%")
     col7.metric("Refus", f"{REFUS:,}")
 
 # Affichage des tableaux de suivi
@@ -153,7 +153,9 @@ st.plotly_chart(fig)
 # TABLEAU DE SUIVI PAR DEPARTEMENT
 st.markdown("<h5 style='text-align: center;color: #3a416c;'>TABLEAU DE SUIVI PAR DEPARTEMENT</h5>", unsafe_allow_html=True)
 # Créer une colonne avec la longueur de 'liste_zd'
-df['Nb_zd'] = df['liste_zd'].apply(len)
+if 'Liste_zd' in df.columns:
+    df['Nb_zd'] = df['Liste_zd'].apply(len)
+
 
 # Groupement des données par département et agrégation des colonnes spécifiques
 df_depart = df.groupby("NomDep")[["UE formelle", "UE informelle", "UE_total", "refus", "Nb_zd"]].sum().reset_index()
