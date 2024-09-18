@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import function
 from datetime import datetime, timedelta
+from io import BytesIO
 
 # Configuration de la page Streamlit
 st.set_page_config(
@@ -53,6 +54,17 @@ with st.sidebar:
     SP = df["NomSp"].sort_values().unique()
     SP_SELECT = st.selectbox("SOUS-PREFECTURE:", SP, index=None)
 
+
+    st.title("Télécharger les données")
+    # Téléchargement des données filtrées
+    st.download_button(
+        label="Télécharger les données filtrées",
+        data=df.to_csv(index=False).encode('utf-8'),
+        file_name='data_filtrée.csv',
+        mime='text/csv'
+    )
+
+
 # Filtrage des données selon les sélections
 if len(df) != 0:
     try:
@@ -68,6 +80,7 @@ if len(df) != 0:
             df = df[df["NomSp"] == SP_SELECT]
     except Exception as e:
         st.error(f"Erreur lors du filtrage des données: {e}")
+
 
 # Fonction pour scinder et collecter les données de la colonne spécifiée
 def split_and_collect(column):
@@ -87,13 +100,16 @@ try:
 except ValueError:
     pass
 
+# Créer une colonne avec la longueur de 'liste_zd'
+df['Nb_zd'] = len(liste_zd)
+
 # Calcul des métriques
 UET = df["UE_total"].sum()
 REFUS = df["refus"].sum()
 UEI = df["UE informelle"].sum()
 UEF = df["UE formelle"].sum()
 PARTIEL = df.loc[df["date_reporting"]==str(datetime.now().date()),"partiel"].sum()
-ZD_total = len(liste_zd)
+ZD_total = df['Nb_zd'].sum()
 
 # Affichage des métriques dans des colonnes
 container = st.container()
@@ -152,10 +168,6 @@ st.plotly_chart(fig)
 
 # TABLEAU DE SUIVI PAR DEPARTEMENT
 st.markdown("<h5 style='text-align: center;color: #3a416c;'>TABLEAU DE SUIVI PAR DEPARTEMENT</h5>", unsafe_allow_html=True)
-# Créer une colonne avec la longueur de 'liste_zd'
-if 'Liste_zd' in df.columns:
-    df['Nb_zd'] = df['Liste_zd'].apply(len)
-
 
 # Groupement des données par département et agrégation des colonnes spécifiques
 df_depart = df.groupby("NomDep")[["UE formelle", "UE informelle", "UE_total", "refus", "Nb_zd"]].sum().reset_index()
